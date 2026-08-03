@@ -454,11 +454,34 @@ var PRIORITY_OPTIONS=["Critica","Alta","Media","Baja"];
 async function api(action,payload,withToken){
   var body={action:action,payload:payload||{}};
   if(withToken&&TOKEN)body.token=TOKEN;
-  var resp=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!resp.ok)throw new Error('HTTP '+resp.status);
-  var text=await resp.text();
-  try{return JSON.parse(text);}
-  catch(e){return {ok:false,error:'Respuesta inválida del servidor.'};}
+  var retryable={login:true,getUserContext:true,listTickets:true,listPersonalByArea:true};
+  var tries=retryable[action]?3:1;
+  var lastErr=null;
+
+  for(var i=0;i<tries;i++){
+    try{
+      var resp=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      var text=await resp.text();
+      var parsed;
+      try{parsed=JSON.parse(text);}
+      catch(e){parsed={ok:false,error:'Respuesta inválida del servidor.'};}
+      if(parsed&&parsed.ok===false&&retryable[action]&&i<tries-1){
+        lastErr=parsed.error||'Error temporal del servidor.';
+        await new Promise(function(r){setTimeout(r,450*(i+1));});
+        continue;
+      }
+      return parsed;
+    }catch(e){
+      lastErr=e&&e.message?e.message:String(e);
+      if(i<tries-1){
+        await new Promise(function(r){setTimeout(r,450*(i+1));});
+        continue;
+      }
+    }
+  }
+
+  throw new Error(lastErr||'Error de conexión.');
 }
 
 /* TOAST */
