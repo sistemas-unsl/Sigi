@@ -1327,9 +1327,33 @@ function renderDate(onSend){
 
 function toBase64(file){
   return new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>{ const s=String(r.result||''); const i=s.indexOf('base64,'); res(i>=0?s.slice(i+7):s); };
-    r.onerror=rej; r.readAsDataURL(file);
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        let width=img.width, height=img.height;
+        const maxDim=1600;
+        if(width>maxDim||height>maxDim){
+          if(width>height){ height=Math.round((height*maxDim)/width); width=maxDim; }
+          else{ width=Math.round((width*maxDim)/height); height=maxDim; }
+        }
+        canvas.width=width; canvas.height=height;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,width,height);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.75);
+        const i=dataUrl.indexOf('base64,');
+        res(i>=0?dataUrl.slice(i+7):dataUrl);
+      };
+      img.onerror=()=>{
+        const s=String(e.target.result||'');
+        const i=s.indexOf('base64,');
+        res(i>=0?s.slice(i+7):s);
+      };
+      img.src=e.target.result;
+    };
+    reader.onerror=rej;
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1349,12 +1373,16 @@ function renderFile(onDone){
   btnSend.onclick=async()=>{
     if(!(inp.files&&inp.files[0])) return;
     const f=inp.files[0];
-    nameLabel.textContent='Subiendo…';
+    nameLabel.textContent='Subiendo y optimizando…';
     btnSend.disabled=true; btnUp.disabled=true; btnSkip.disabled=true;
-    const base64=await toBase64(f);
     try{
-      const res=await callApi("uploadImage",{fileName:f.name,mimeType:f.type,base64Data:base64});
-      if(!res||!res.ok){ addMsg('bot','No fue posible adjuntar la imagen: '+(res?.error||'Error')); state.imagenUrl=''; onDone(); return; }
+      const base64=await toBase64(f);
+      const res=await callApi("uploadImage",{fileName:f.name,mimeType:'image/jpeg',base64Data:base64});
+      if(!res||!res.ok){
+        const cleanErr=String((res&&res.error)||'Error al procesar').replace(/<[^>]*>?/gm, '');
+        addMsg('bot','No fue posible adjuntar la imagen: '+cleanErr);
+        state.imagenUrl=''; onDone(); return;
+      }
       state.imagenUrl=res.url||''; addMsg('me','✅ Imagen adjuntada'); onDone();
     }catch(e){ addMsg('bot','No fue posible adjuntar la imagen. El ticket se registrará igualmente.'); state.imagenUrl=''; onDone(); }
   };
