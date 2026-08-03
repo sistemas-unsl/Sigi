@@ -12,6 +12,7 @@ const APPS_SCRIPT_URLS = Array.from(new Set([
 ].filter(Boolean)));
 
 const TURNSTILE_SECRET = String(process.env.TURNSTILE_SECRET || "").trim();
+const APPS_SCRIPT_TIMEOUT_MS = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 18000);
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":  "*",
@@ -51,13 +52,9 @@ export async function handler(event) {
 
       for (let attempt = 0; attempt < attempts; attempt++) {
         try {
-          const resp = await fetch(url, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify(parsed)
-          });
-
-          text = await resp.text();
+          const result = await postToAppsScript(url, parsed);
+          const resp = result.resp;
+          text = result.text;
           const trimmed = text.trim();
 
           if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
@@ -70,7 +67,7 @@ export async function handler(event) {
 
           lastError = `Apps Script devolvió una respuesta no JSON (${resp.status}).`;
         } catch (err) {
-          lastError = String(err && err.message ? err.message : err);
+          lastError = normalizeProxyError(err);
         }
 
         if (attempt < attempts - 1) {
@@ -95,4 +92,33 @@ export async function handler(event) {
       body: JSON.stringify({ ok: false, error: String(err && err.message ? err.message : err) })
     };
   }
+}
+
+async function postToAppsScript(url, parsed) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), APPS_SCRIPT_TIMEOUT_MS);
+
+  try {
+    const resp = await fetch(url, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(parsed),
+      signal:  controller.signal
+    });
+
+    return {
+      resp,
+      text: await resp.text()
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function normalizeProxyError(err) {
+  if (err && err.name === "AbortError") {
+    return "Tiempo agotado al conectar con Apps Script.";
+  }
+
+  return String(err && err.message ? err.message : err);
 }
