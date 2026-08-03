@@ -3,11 +3,12 @@
  * Proxy entre el frontend y Google Apps Script.
  * Verifica token de Cloudflare Turnstile para acción "createTicket".
  */
-const APPS_SCRIPT_URL =
+const APPS_SCRIPT_URL = String(
   process.env.APPS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbzha0CA5bQjOTmcdlqboDV57M1QIM4VrsPqzTMfhqy0A5X37g3pkPJISqjcRDUyL2KV/exec";
+  "https://script.google.com/macros/s/AKfycbzha0CA5bQjOTmcdlqboDV57M1QIM4VrsPqzTMfhqy0A5X37g3pkPJISqjcRDUyL2KV/exec"
+).trim();
 
-const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || "0x4AAAAAACpsf2v_wX8P6Se84BbCDT151DE";
+const TURNSTILE_SECRET = String(process.env.TURNSTILE_SECRET || "0x4AAAAAACpsf2v_wX8P6Se84BbCDT151DE").trim();
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":  "*",
