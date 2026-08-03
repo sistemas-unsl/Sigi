@@ -456,7 +456,9 @@ async function api(action,payload,withToken){
   if(withToken&&TOKEN)body.token=TOKEN;
   var resp=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!resp.ok)throw new Error('HTTP '+resp.status);
-  return await resp.json();
+  var text=await resp.text();
+  try{return JSON.parse(text);}
+  catch(e){return {ok:false,error:'Respuesta inválida del servidor.'};}
 }
 
 /* TOAST */
