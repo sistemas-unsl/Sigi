@@ -37,29 +37,45 @@ export async function handler(event) {
        de permisos; el frontend siempre debe recibir JSON. */
     let text = "";
     let lastError = "";
+    const retryableActions = new Set([
+      "login",
+      "getUserContext",
+      "listTickets",
+      "listPersonalByArea",
+      "consultarEstado",
+      "health"
+    ]);
 
     for (const url of APPS_SCRIPT_URLS) {
-      try {
-        const resp = await fetch(url, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify(parsed)
-        });
+      const attempts = retryableActions.has(action) ? 2 : 1;
 
-        text = await resp.text();
-        const trimmed = text.trim();
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          const resp = await fetch(url, {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(parsed)
+          });
 
-        if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
-          return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-            body: text
-          };
+          text = await resp.text();
+          const trimmed = text.trim();
+
+          if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
+            return {
+              statusCode: 200,
+              headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+              body: text
+            };
+          }
+
+          lastError = `Apps Script devolvió una respuesta no JSON (${resp.status}).`;
+        } catch (err) {
+          lastError = String(err && err.message ? err.message : err);
         }
 
-        lastError = `Apps Script devolvió una respuesta no JSON (${resp.status}).`;
-      } catch (err) {
-        lastError = String(err && err.message ? err.message : err);
+        if (attempt < attempts - 1) {
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
       }
     }
 
