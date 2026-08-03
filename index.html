@@ -1179,7 +1179,7 @@ function escHtml(s){
 /* ════ CHATBOT — STATE ════ */
 const state = {
   area:"", prioridad:"", ubicacion:"", detalle:"",
-  fecha_incidente:"", nombre:"", caracter:"", email:"",
+  fecha_incidente:"", nombre:"", email:"",
   quiereImagen:null, imagenUrl:""
 };
 
@@ -1190,14 +1190,13 @@ const FLOW = [
   {k:"fecha_incidente",type:"date",     text:"Fecha del incidente"},
   {k:"detalle",        type:"textarea", text:"Describe en detalle el incidente ocurrido. ¿Qué sucede?", placeholder:"Descripción (qué ocurre, desde cuándo y cualquier dato útil para su verificación)"},
   {k:"nombre",         type:"input",    text:"Tu nombre y apellido", placeholder:"Nombre y apellido"},
-  {k:"caracter",       type:"buttons",  text:"¿En qué carácter realizás esta solicitud?\n\nSeleccioná según corresponda:", options:["Docente","Nodocente","Estudiante"]},
   {k:"email",          type:"input",    text:"Finalmente, proporciónanos tu correo electrónico para notificarte el seguimiento y estado de tu ticket.", placeholder:"correo@ejemplo.com"},
   {k:"quiereImagen",   type:"buttons",  text:"📎 ¿Desea adjuntar imágenes? (Opcional)", options:["Sí","No"]},
   {k:"imagen",         type:"file",     text:"Adjunte la imagen (JPG/PNG).", optional:true},
   {k:"confirm",        type:"confirm",  text:"Verificación final: revise la información y confirme el registro."}
 ];
 
-const STEP_LABELS = ["Área","Prioridad","Ubicación","Fecha","Descripción","Nombre","Carácter","Correo","Imagen","Adjunto","Confirmación"];
+const STEP_LABELS = ["Área","Prioridad","Ubicación","Fecha","Descripción","Nombre","Correo","Imagen","Adjunto","Confirmación"];
 
 function buildSidebarSteps(){
   const wrap=document.getElementById('sbSteps');
@@ -1413,7 +1412,6 @@ function renderStep(step){
       "Área: "+state.area+"\n"+"Prioridad: "+state.prioridad+"\n"+
       "Ubicación: "+state.ubicacion+"\n"+"Descripción: "+state.detalle+"\n"+
       "Fecha: "+state.fecha_incidente+"\n"+"Solicitante: "+state.nombre+"\n"+
-      "Carácter: "+state.caracter+"\n"+
       "Correo: "+state.email+"\n"+"Imagen: "+(state.imagenUrl?'Adjunta':'No adjunta')+"\n\n"+
       "Completá la verificación de seguridad y luego confirmá el registro.";
     addMsg('bot',resumen);
@@ -1541,7 +1539,7 @@ function renderStep(step){
         const res=await callApi("createTicket",{
           area:state.area, prioridad:state.prioridad, ubicacion:state.ubicacion,
           detalle:state.detalle, fecha_incidente:state.fecha_incidente,
-          nombre:state.nombre, caracter:state.caracter, email:state.email, imagenUrl:state.imagenUrl,
+          nombre:state.nombre, email:state.email, imagenUrl:state.imagenUrl,
           cfTurnstileToken: _tsToken
         });
         if(!res||!res.ok){

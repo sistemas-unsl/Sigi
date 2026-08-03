@@ -4,6 +4,7 @@
  * Verifica token de Cloudflare Turnstile para acción "createTicket".
  */
 const APPS_SCRIPT_URL =
+  process.env.APPS_SCRIPT_URL ||
   "https://script.google.com/macros/s/AKfycbzZ3XAmopGRNX80MJw5R5rsp48662WjXjGie9t28tI5mlq-Ww5Y_SjXjQ5uJtGNGWg/exec";
 
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || "0x4AAAAAACpsf2v_wX8P6Se84BbCDT151DE";
