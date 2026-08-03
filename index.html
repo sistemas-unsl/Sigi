@@ -1333,7 +1333,7 @@ function toBase64(file){
       img.onload=()=>{
         const canvas=document.createElement('canvas');
         let width=img.width, height=img.height;
-        const maxDim=1600;
+        const maxDim=800;
         if(width>maxDim||height>maxDim){
           if(width>height){ height=Math.round((height*maxDim)/width); width=maxDim; }
           else{ width=Math.round((width*maxDim)/height); height=maxDim; }
@@ -1341,7 +1341,7 @@ function toBase64(file){
         canvas.width=width; canvas.height=height;
         const ctx=canvas.getContext('2d');
         ctx.drawImage(img,0,0,width,height);
-        const dataUrl=canvas.toDataURL('image/jpeg',0.75);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.6);
         const i=dataUrl.indexOf('base64,');
         res(i>=0?dataUrl.slice(i+7):dataUrl);
       };
