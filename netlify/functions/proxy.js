@@ -36,8 +36,6 @@ export async function handler(event) {
        Si Netlify tiene una APPS_SCRIPT_URL migrada y rota, probamos el deploy
        operativo conocido. Google a veces responde HTML de Drive ante problemas
        de permisos; el frontend siempre debe recibir JSON. */
-    let text = "";
-    let lastError = "";
     const retryableActions = new Set([
       "login",
       "getUserContext",
@@ -47,39 +45,16 @@ export async function handler(event) {
       "health"
     ]);
 
-    for (const url of APPS_SCRIPT_URLS) {
-      const attempts = retryableActions.has(action) && url === APPS_SCRIPT_URLS[0] ? 2 : 1;
+    const result = retryableActions.has(action)
+      ? await firstValidAppsScriptResponse(parsed, action)
+      : await singleAppsScriptResponse(parsed, action);
 
-      for (let attempt = 0; attempt < attempts; attempt++) {
-        try {
-          const result = await postToAppsScript(url, parsed);
-          const resp = result.resp;
-          text = result.text;
-          const trimmed = text.trim();
-
-          if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
-            const json = tryParseJson(trimmed);
-            if (shouldTryNextAppsScript(json, action) && url !== APPS_SCRIPT_URLS[APPS_SCRIPT_URLS.length - 1]) {
-              lastError = json.error || "La implementacion no reconoce la accion.";
-              break;
-            }
-
-            return {
-              statusCode: 200,
-              headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-              body: text
-            };
-          }
-
-          lastError = `Apps Script devolvió una respuesta no JSON (${resp.status}).`;
-        } catch (err) {
-          lastError = normalizeProxyError(err);
-        }
-
-        if (attempt < attempts - 1) {
-          await new Promise(resolve => setTimeout(resolve, 250));
-        }
-      }
+    if (result.ok) {
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        body: result.text
+      };
     }
 
     return {
@@ -87,7 +62,7 @@ export async function handler(event) {
       headers: { "Content-Type": "application/json", ...CORS_HEADERS },
       body: JSON.stringify({
         ok: false,
-        error: lastError || "No fue posible conectar con Apps Script."
+        error: result.error || "No fue posible conectar con Apps Script."
       })
     };
 
@@ -98,6 +73,54 @@ export async function handler(event) {
       body: JSON.stringify({ ok: false, error: String(err && err.message ? err.message : err) })
     };
   }
+}
+
+async function singleAppsScriptResponse(parsed, action) {
+  const url = APPS_SCRIPT_URLS[0];
+
+  try {
+    const result = await postToAppsScript(url, parsed);
+    return validateAppsScriptResponse(result, action);
+  } catch (err) {
+    return { ok: false, error: normalizeProxyError(err) };
+  }
+}
+
+async function firstValidAppsScriptResponse(parsed, action) {
+  const pending = APPS_SCRIPT_URLS.map((url, index) =>
+    postToAppsScript(url, parsed)
+      .then(result => ({ index, ...validateAppsScriptResponse(result, action) }))
+      .catch(err => ({ index, ok: false, error: normalizeProxyError(err) }))
+  );
+
+  const errors = [];
+
+  while (pending.length) {
+    const settled = await Promise.race(pending.map((promise, index) => promise.then(value => ({ value, index }))));
+    pending.splice(settled.index, 1);
+
+    if (settled.value.ok) return settled.value;
+    errors.push(settled.value.error);
+  }
+
+  return { ok: false, error: errors.find(Boolean) || "No fue posible conectar con Apps Script." };
+}
+
+function validateAppsScriptResponse(result, action) {
+  const resp = result.resp;
+  const text = result.text || "";
+  const trimmed = text.trim();
+
+  if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    const json = tryParseJson(trimmed);
+    if (shouldIgnoreAppsScriptJson(json, action)) {
+      return { ok: false, error: json.error || "La implementacion no reconoce la accion." };
+    }
+
+    return { ok: true, text };
+  }
+
+  return { ok: false, error: `Apps Script devolvió una respuesta no JSON (${resp.status}).` };
 }
 
 async function postToAppsScript(url, parsed) {
@@ -137,7 +160,7 @@ function tryParseJson(text) {
   }
 }
 
-function shouldTryNextAppsScript(json, action) {
+function shouldIgnoreAppsScriptJson(json, action) {
   if (!json || json.ok !== false) return false;
 
   const err = String(json.error || "").toLowerCase();
