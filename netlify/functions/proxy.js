@@ -12,7 +12,7 @@ const APPS_SCRIPT_URLS = Array.from(new Set([
 ].filter(Boolean)));
 
 const TURNSTILE_SECRET = String(process.env.TURNSTILE_SECRET || "").trim();
-const APPS_SCRIPT_TIMEOUT_MS = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 10000);
+const APPS_SCRIPT_TIMEOUT_MS = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 25000);
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":  "*",
