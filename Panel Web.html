@@ -466,6 +466,7 @@ async function api(action,payload,withToken){
       var parsed;
       try{parsed=JSON.parse(text);}
       catch(e){parsed={ok:false,error:'Respuesta inválida del servidor.'};}
+      if(parsed&&parsed.authError)return parsed;
       if(parsed&&parsed.ok===false&&retryable[action]&&i<tries-1){
         lastErr=parsed.error||'Error temporal del servidor.';
         await new Promise(function(r){setTimeout(r,450*(i+1));});

@@ -7,8 +7,7 @@ const DEFAULT_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzskCljxx7SuU4CdXrM0X7YnM0f2SHzVAri4t44SleAMFYns50RTYU-0JbKJTlfea2Y/exec";
 
 const APPS_SCRIPT_URLS = Array.from(new Set([
-  DEFAULT_APPS_SCRIPT_URL,
-  String(process.env.APPS_SCRIPT_URL || "").trim()
+  DEFAULT_APPS_SCRIPT_URL
 ].filter(Boolean)));
 
 const TURNSTILE_SECRET = String(process.env.TURNSTILE_SECRET || "").trim();
