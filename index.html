@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,600;1,9..144,700&family=Geist+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 
 <style>
 /* ═══════════════════════════════════
@@ -1405,7 +1405,7 @@ function renderStep(step){
     return;
   }
 
-  /* ════ CONFIRM — con Turnstile managed (widget visible con tilde) ════ */
+  /* ════ CONFIRM ════ */
   if(step.type==='confirm'){
     const resumen=
       "Resumen del reporte\n"+"─────────────────────\n"+
@@ -1413,27 +1413,11 @@ function renderStep(step){
       "Ubicación: "+state.ubicacion+"\n"+"Descripción: "+state.detalle+"\n"+
       "Fecha: "+state.fecha_incidente+"\n"+"Solicitante: "+state.nombre+"\n"+
       "Correo: "+state.email+"\n"+"Imagen: "+(state.imagenUrl?'Adjunta':'No adjunta')+"\n\n"+
-      "Completá la verificación de seguridad y luego confirmá el registro.";
+      "Revisá la información y confirmá el registro.";
     addMsg('bot',resumen);
 
     const box=boxEl();
     box.innerHTML='';
-
-    /* ── Contenedor Turnstile ── */
-    const tsWrap=document.createElement('div');
-    tsWrap.className='ts-wrap';
-    const tsLabel=document.createElement('div');
-    tsLabel.className='ts-label';
-    tsLabel.textContent='Verificación de seguridad';
-    const tsDiv=document.createElement('div');
-    tsDiv.id='tsWidget';
-    const tsHint=document.createElement('div');
-    tsHint.className='ts-hint';
-    tsHint.textContent='Completá la verificación para habilitar el botón Confirmar.';
-    tsWrap.appendChild(tsLabel);
-    tsWrap.appendChild(tsDiv);
-    tsWrap.appendChild(tsHint);
-    box.appendChild(tsWrap);
 
     /* ── Botones ── */
     const choiceWrap=document.createElement('div');
@@ -1443,7 +1427,6 @@ function renderStep(step){
     const btnConfirmar=document.createElement('button');
     btnConfirmar.className='btn-choice';
     btnConfirmar.textContent='Confirmar';
-    btnConfirmar.disabled=false; // Habilitado siempre a solicitud del usuario
 
     const btnCancelar=document.createElement('button');
     btnCancelar.className='btn-choice';
@@ -1453,61 +1436,7 @@ function renderStep(step){
     choiceWrap.appendChild(btnCancelar);
     box.appendChild(choiceWrap);
 
-    /* ── Token Turnstile ── */
-    let _tsToken='bypassed';
     let _confirmed=false;
-
-    const SITEKEY='0x4AAAAAACpsf8JExsabS12b';
-
-    function renderTurnstile(){
-      if(window.turnstile){
-        window.turnstile.render('#tsWidget',{
-          sitekey: SITEKEY,
-          theme: 'light',
-          callback: function(token){
-            _tsToken=token;
-            btnConfirmar.disabled=false;
-            tsHint.textContent='Verificación completada. Ya podés confirmar el registro.';
-            tsHint.style.color='var(--ok)';
-          },
-          'error-callback': function(){
-            _tsToken=null;
-            btnConfirmar.disabled=true;
-            tsHint.textContent='Error en la verificación. Por favor recargá la página.';
-            tsHint.style.color='var(--err)';
-          },
-          'expired-callback': function(){
-            _tsToken=null;
-            btnConfirmar.disabled=true;
-            tsHint.textContent='La verificación expiró. Por favor recargá la página.';
-            tsHint.style.color='var(--err)';
-          }
-        });
-      } else {
-        /* Turnstile no cargó (bloqueador de ads, red lenta, etc.) — permitir igual */
-        _tsToken='turnstile-not-loaded';
-        btnConfirmar.disabled=false;
-        tsHint.textContent='Verificación omitida (no se pudo cargar el widget).';
-      }
-    }
-
-    /* Turnstile puede cargar después del render del DOM */
-    if(window.turnstile){
-      renderTurnstile();
-    } else {
-      /* Esperar hasta 4 seg a que cargue el script async */
-      let waited=0;
-      const waitTs=setInterval(()=>{
-        waited+=200;
-        if(window.turnstile){ clearInterval(waitTs); renderTurnstile(); return; }
-        if(waited>=4000){
-          clearInterval(waitTs);
-          _tsToken='turnstile-timeout';
-          btnConfirmar.disabled=false;
-          tsHint.textContent='Verificación omitida (no se pudo cargar el widget).';
-        }
-      },200);
-    }
 
     /* ── Acción Cancelar ── */
     btnCancelar.addEventListener('click',function(){
@@ -1521,11 +1450,6 @@ function renderStep(step){
     /* ── Acción Confirmar ── */
     btnConfirmar.addEventListener('click',async function(){
       if(_confirmed) return;
-      if(!_tsToken){
-        tsHint.textContent='Por favor completá la verificación de seguridad antes de confirmar.';
-        tsHint.style.color='var(--err)';
-        return;
-      }
       _confirmed=true;
       btnConfirmar.disabled=true;
       btnCancelar.disabled=true;
@@ -1540,7 +1464,7 @@ function renderStep(step){
           area:state.area, prioridad:state.prioridad, ubicacion:state.ubicacion,
           detalle:state.detalle, fecha_incidente:state.fecha_incidente,
           nombre:state.nombre, email:state.email, imagenUrl:state.imagenUrl,
-          cfTurnstileToken: _tsToken
+          cfTurnstileToken: 'bypassed'
         });
         if(!res||!res.ok){
           addMsg('bot','No fue posible registrar la incidencia: '+(res?.error||'Error'));
