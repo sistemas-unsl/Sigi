@@ -5,7 +5,7 @@
  */
 const APPS_SCRIPT_URL = String(
   process.env.APPS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbzha0CA5bQjOTmcdlqboDV57M1QIM4VrsPqzTMfhqy0A5X37g3pkPJISqjcRDUyL2KV/exec"
+  "https://script.google.com/macros/s/AKfycbyt01Oa0d2850A9Q7sW2C6zd5jg05UihidlUNd6fnvJYHA5feDSz6SMlFkS_DmzqyML/exec"
 ).trim();
 
 const TURNSTILE_SECRET = String(process.env.TURNSTILE_SECRET || "0x4AAAAAACpsf2v_wX8P6Se84BbCDT151DE").trim();
