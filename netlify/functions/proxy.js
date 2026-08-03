@@ -7,12 +7,12 @@ const DEFAULT_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyt01Oa0d2850A9Q7sW2C6zd5jg05UihidlUNd6fnvJYHA5feDSz6SMlFkS_DmzqyML/exec";
 
 const APPS_SCRIPT_URLS = Array.from(new Set([
-  DEFAULT_APPS_SCRIPT_URL,
-  String(process.env.APPS_SCRIPT_URL || "").trim()
+  String(process.env.APPS_SCRIPT_URL || "").trim(),
+  DEFAULT_APPS_SCRIPT_URL
 ].filter(Boolean)));
 
 const TURNSTILE_SECRET = String(process.env.TURNSTILE_SECRET || "").trim();
-const APPS_SCRIPT_TIMEOUT_MS = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 18000);
+const APPS_SCRIPT_TIMEOUT_MS = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 10000);
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":  "*",
@@ -48,7 +48,7 @@ export async function handler(event) {
     ]);
 
     for (const url of APPS_SCRIPT_URLS) {
-      const attempts = retryableActions.has(action) ? 2 : 1;
+      const attempts = retryableActions.has(action) && url === APPS_SCRIPT_URLS[0] ? 2 : 1;
 
       for (let attempt = 0; attempt < attempts; attempt++) {
         try {
@@ -58,6 +58,12 @@ export async function handler(event) {
           const trimmed = text.trim();
 
           if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
+            const json = tryParseJson(trimmed);
+            if (shouldTryNextAppsScript(json, action) && url !== APPS_SCRIPT_URLS[APPS_SCRIPT_URLS.length - 1]) {
+              lastError = json.error || "La implementacion no reconoce la accion.";
+              break;
+            }
+
             return {
               statusCode: 200,
               headers: { "Content-Type": "application/json", ...CORS_HEADERS },
@@ -121,4 +127,23 @@ function normalizeProxyError(err) {
   }
 
   return String(err && err.message ? err.message : err);
+}
+
+function tryParseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    return null;
+  }
+}
+
+function shouldTryNextAppsScript(json, action) {
+  if (!json || json.ok !== false) return false;
+
+  const err = String(json.error || "").toLowerCase();
+  if (action === "health" && err.includes("acción inválida")) return true;
+  if (action === "health" && err.includes("accion inválida")) return true;
+  if (action === "health" && err.includes("accion invalida")) return true;
+
+  return false;
 }
