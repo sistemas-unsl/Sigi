@@ -1443,7 +1443,7 @@ function renderStep(step){
     const btnConfirmar=document.createElement('button');
     btnConfirmar.className='btn-choice';
     btnConfirmar.textContent='Confirmar';
-    btnConfirmar.disabled=true; // deshabilitado hasta que Turnstile apruebe
+    btnConfirmar.disabled=false; // Habilitado siempre a solicitud del usuario
 
     const btnCancelar=document.createElement('button');
     btnCancelar.className='btn-choice';
@@ -1454,7 +1454,7 @@ function renderStep(step){
     box.appendChild(choiceWrap);
 
     /* ── Token Turnstile ── */
-    let _tsToken=null;
+    let _tsToken='bypassed';
     let _confirmed=false;
 
     const SITEKEY='0x4AAAAAACpsf8JExsabS12b';
