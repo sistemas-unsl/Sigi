@@ -5,6 +5,8 @@
 const FALLBACK_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzZ3XAmopGRNX80MJw5R5rsp48662WjXjGie9t28tI5mlq-Ww5Y_SjXjQ5uJtGNGWg/exec";
 
+const APPS_SCRIPT_TIMEOUT_MS = 10000;
+
 const APPS_SCRIPT_URLS = Array.from(new Set([
   process.env.APPS_SCRIPT_URL,
   FALLBACK_APPS_SCRIPT_URL
@@ -46,11 +48,15 @@ async function postToFirstJsonAppsScript(parsed) {
   let lastError = "No fue posible conectar con Apps Script.";
 
   for (const url of APPS_SCRIPT_URLS) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), APPS_SCRIPT_TIMEOUT_MS);
+
     try {
       const resp = await fetch(url, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(parsed)
+        body:    JSON.stringify(parsed),
+        signal:  controller.signal
       });
 
       const text = await resp.text();
@@ -62,7 +68,11 @@ async function postToFirstJsonAppsScript(parsed) {
 
       lastError = `Apps Script devolvió una respuesta no JSON (${resp.status}).`;
     } catch (err) {
-      lastError = String(err && err.message ? err.message : err);
+      lastError = controller.signal.aborted
+        ? "Apps Script agotó el tiempo de respuesta."
+        : String(err && err.message ? err.message : err);
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
