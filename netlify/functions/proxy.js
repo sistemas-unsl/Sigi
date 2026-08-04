@@ -4,7 +4,10 @@
  */
 const APPS_SCRIPT_TIMEOUT_MS = 20000;
 
-const APPS_SCRIPT_URL = String(process.env.APPS_SCRIPT_URL || "").trim();
+// Esta es la implementacion 135 verificada del proyecto recuperado.
+// Se fija para que Netlify no use una variable antigua o con caracteres mal copiados.
+const APPS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbyE9JOHKGZeMMU3NxhOuqQOdMm7FgGLfXhibHBZQGobJLG0kDEN4ebgAP207Czy3AQk/exec";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":  "*",
@@ -39,10 +42,6 @@ export async function handler(event) {
 }
 
 async function postToAppsScript(parsed) {
-  if (!APPS_SCRIPT_URL) {
-    return JSON.stringify({ ok: false, error: "Falta configurar APPS_SCRIPT_URL en Netlify." });
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), APPS_SCRIPT_TIMEOUT_MS);
 
