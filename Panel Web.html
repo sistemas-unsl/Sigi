@@ -441,8 +441,7 @@ tbody tr:hover .tcell-arr{color:var(--blue)}
 
 <script>
 /* CONFIG */
-var PROXY_URL="/.netlify/functions/proxy";
-(function(){var m=document.querySelector('meta[name="proxy-url"]');if(m&&m.content)PROXY_URL=m.content;})();
+var APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbyE9JOHKGZeMMU3NxhOuqQOdMm7FgGLfXhibHBZQGobJLG0kDEN4ebgAP207Czy3AQk/exec";
 
 /* ESTADO */
 var TOKEN=null,CTX=null,CURRENT=null,CURRENT_PEOPLE=[];
@@ -454,7 +453,7 @@ var PRIORITY_OPTIONS=["Critica","Alta","Media","Baja"];
 async function api(action,payload,withToken){
   var body={action:action,payload:payload||{}};
   if(withToken&&TOKEN)body.token=TOKEN;
-  var resp=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var resp=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(body)});
   if(!resp.ok)throw new Error('HTTP '+resp.status);
   return await resp.json();
 }
