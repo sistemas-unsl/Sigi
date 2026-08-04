@@ -2,9 +2,11 @@
  * proxy.js — Netlify Function
  * Proxy entre el frontend y Google Apps Script.
  */
+import https from "node:https";
+
 const APPS_SCRIPT_TIMEOUT_MS = 20000;
 
-// Esta es la implementacion 135 verificada del proyecto recuperado.
+// Esta es la implementacion 136 verificada del proyecto recuperado.
 // Se fija para que Netlify no use una variable antigua o con caracteres mal copiados.
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyE9JOHKGZeMMU3NxhOuqQOdMm7FgGLfXhibHBZQGobJLG0kDEN4ebgAP207Czy3AQk/exec";
@@ -42,36 +44,61 @@ export async function handler(event) {
 }
 
 async function postToAppsScript(parsed) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), APPS_SCRIPT_TIMEOUT_MS);
-
   try {
-    const resp = await fetch(APPS_SCRIPT_URL, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(parsed),
-      signal:  controller.signal
+    const body = JSON.stringify(parsed);
+    let resp = await requestText(APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(body)
+      },
+      body
     });
 
-    const text = await resp.text();
-    const trimmed = text.trim();
+    // Apps Script procesa el POST y responde con un 302 a googleusercontent.
+    // Seguimos ese salto de forma explicita: el fetch de Netlify puede quedar
+    // esperando en este punto, aun cuando Apps Script ya termino la ejecucion.
+    if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
+      resp = await requestText(resp.headers.location);
+    }
 
-    if (resp.ok && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    const trimmed = resp.body.trim();
+
+    if (resp.statusCode >= 200 && resp.statusCode < 300 && (trimmed.startsWith("{") || trimmed.startsWith("["))) {
       return trimmed;
     }
 
     return JSON.stringify({
       ok: false,
-      error: `Apps Script devolvió una respuesta no JSON (${resp.status}).`
+      error: `Apps Script devolvió una respuesta no JSON (${resp.statusCode}).`
     });
   } catch (err) {
     return JSON.stringify({
       ok: false,
-      error: controller.signal.aborted
-        ? "Apps Script agotó el tiempo de respuesta."
-        : String(err && err.message ? err.message : err)
+      error: String(err && err.message ? err.message : err)
     });
-  } finally {
-    clearTimeout(timeout);
   }
+}
+
+function requestText(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, {
+      method: options.method || "GET",
+      headers: options.headers || {},
+      timeout: APPS_SCRIPT_TIMEOUT_MS
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve({
+        statusCode: res.statusCode || 0,
+        headers: res.headers,
+        body: Buffer.concat(chunks).toString("utf8")
+      }));
+    });
+
+    req.on("timeout", () => req.destroy(new Error("Apps Script agotó el tiempo de respuesta.")));
+    req.on("error", reject);
+    if (options.body) req.write(options.body);
+    req.end();
+  });
 }
