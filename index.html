@@ -937,12 +937,12 @@ if(window.visualViewport){
 }
 
 /* ════ CONFIG ════ */
-const APPS_SCRIPT_EXEC_URL = "/.netlify/functions/proxy";
+const APPS_SCRIPT_EXEC_URL = "https://script.google.com/macros/s/AKfycbyE9JOHKGZeMMU3NxhOuqQOdMm7FgGLfXhibHBZQGobJLG0kDEN4ebgAP207Czy3AQk/exec";
 
 async function callApi(action, payload){
   const res = await fetch(APPS_SCRIPT_EXEC_URL, {
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{"Content-Type":"text/plain;charset=UTF-8"},
     body: JSON.stringify({action, payload: payload||{}})
   });
   const text = await res.text();
